@@ -13,6 +13,7 @@ pub enum Language {
     TypeScript,
     Tsx,
     Rust,
+    CSharp,
 }
 
 /// Detect language from file extension. Returns None for unsupported extensions.
@@ -24,6 +25,7 @@ pub fn detect_language(path: &Path) -> Option<Language> {
         "ts" => Some(Language::TypeScript),
         "tsx" | "jsx" => Some(Language::Tsx),
         "rs" => Some(Language::Rust),
+        "cs" => Some(Language::CSharp),
         _ => None,
     }
 }
@@ -45,7 +47,9 @@ pub fn is_test_file(path: &Path) -> bool {
         if name.starts_with("test_") {
             return true;
         }
-        for infix in &["_test.", ".test.", "_spec.", ".spec."] {
+        for infix in &[
+            "_test.", ".test.", "_spec.", ".spec.", ".Tests.", "Tests.cs",
+        ] {
             if name.contains(infix) {
                 return true;
             }
@@ -140,6 +144,18 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_language_csharp() {
+        assert_eq!(
+            detect_language(Path::new("Program.cs")),
+            Some(Language::CSharp)
+        );
+        assert_eq!(
+            detect_language(Path::new("src/Services/UserService.cs")),
+            Some(Language::CSharp)
+        );
+    }
+
+    #[test]
     fn test_detect_language_unsupported() {
         assert_eq!(detect_language(Path::new("file.go")), None);
         assert_eq!(detect_language(Path::new("file.java")), None);
@@ -168,6 +184,13 @@ mod tests {
         assert!(is_test_file(Path::new("tests/main.py")));
         assert!(is_test_file(Path::new("__tests__/App.test.js")));
         assert!(is_test_file(Path::new("spec/models.rb")));
+    }
+
+    #[test]
+    fn test_is_test_file_csharp() {
+        assert!(is_test_file(Path::new("UserService.Tests.cs")));
+        assert!(is_test_file(Path::new("AuthHandlerTests.cs")));
+        assert!(!is_test_file(Path::new("UserService.cs")));
     }
 
     #[test]

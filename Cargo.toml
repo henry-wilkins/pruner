@@ -19,6 +19,7 @@ serde_json = "1"
 regex = "1"
 anyhow = "1"
 dirs = "6"
+tree-sitter-c-sharp = "0.23"
 
 [dev-dependencies]
 assert_cmd = "2"

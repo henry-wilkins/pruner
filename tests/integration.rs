@@ -624,6 +624,126 @@ mod incremental {
 }
 
 // ============================================================================
+// C# project fixture
+// ============================================================================
+
+mod csharp_project {
+    use super::*;
+
+    #[test]
+    fn index_finds_all_files() {
+        let dir = setup_fixture("csharp_project");
+        pruner()
+            .args(["index", dir.path().to_str().unwrap(), "-v"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("5 files"));
+    }
+
+    #[test]
+    fn context_authenticate_finds_service_method() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        let json = context_json(&path, "AuthenticateUser");
+        let symbols: Vec<&str> = json["key_symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["name"].as_str().unwrap())
+            .collect();
+
+        assert!(
+            symbols.contains(&"AuthenticateUser"),
+            "should find AuthenticateUser, got: {symbols:?}"
+        );
+    }
+
+    #[test]
+    fn context_login_finds_controller() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        let json = context_json(&path, "login");
+        let symbols: Vec<&str> = json["key_symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["name"].as_str().unwrap())
+            .collect();
+
+        assert!(
+            symbols.contains(&"Login") || symbols.contains(&"AuthenticateUser"),
+            "should find login-related symbol, got: {symbols:?}"
+        );
+    }
+
+    #[test]
+    fn context_authenticate_has_execution_paths() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        let json = context_json(&path, "AuthenticateUser");
+        let paths = json["execution_paths"].as_array().unwrap();
+
+        assert!(
+            !paths.is_empty(),
+            "should have execution paths from AuthenticateUser"
+        );
+    }
+
+    #[test]
+    fn test_file_detected_as_test() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        pruner()
+            .args(["show-file", &path, "Tests/AuthService.Tests.cs"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Test: true"));
+    }
+
+    #[test]
+    fn show_file_displays_symbols() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        pruner()
+            .args(["show-file", &path, "Services/AuthService.cs"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("AuthenticateUser"))
+            .stdout(predicate::str::contains("CreateSession"));
+    }
+
+    #[test]
+    fn context_create_session_finds_auth_service() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        let json = context_json(&path, "CreateSession");
+        let all_text = serde_json::to_string(&json).unwrap();
+
+        assert!(
+            all_text.contains("AuthService"),
+            "context should reference AuthService"
+        );
+    }
+
+    #[test]
+    fn context_has_snippets_with_code() {
+        let dir = setup_fixture("csharp_project");
+        let path = index_fixture(&dir);
+
+        let json = context_json_full(&path, "AuthenticateUser");
+        let snippets = json["snippets"].as_array().unwrap();
+
+        assert!(!snippets.is_empty(), "should have code snippets");
+    }
+}
+
+// ============================================================================
 // Cross-cutting: measure command
 // ============================================================================
 
